@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pivotal.Discovery.Client;
+using Steeltoe.CircuitBreaker.Hystrix;
 using Steeltoe.Extensions.Configuration;
 
 namespace BacklogServer
@@ -30,9 +31,12 @@ namespace BacklogServer
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // Add Steeltoe services
+            services.AddDiscoveryClient(Configuration);
+            services.AddHystrixMetricsStream(Configuration);
+
             // Add framework services.
             services.AddMvc();
-            services.AddDiscoveryClient(Configuration);
             services.AddSingleton<IDataSourceConfig, DataSourceConfig>();
             services.AddSingleton<IDatabaseTemplate, DatabaseTemplate>();
             services.AddSingleton<IStoryDataGateway, StoryDataGateway>();
@@ -44,8 +48,9 @@ namespace BacklogServer
                 {
                     BaseAddress = new Uri(Configuration.GetValue<string>("REGISTRATION_SERVER_ENDPOINT"))
                 };
+                var logger = sp.GetService<ILogger<ProjectClient>>();
 
-                return new ProjectClient(httpClient);
+                return new ProjectClient(httpClient, logger);
             });
         }
 
@@ -57,6 +62,8 @@ namespace BacklogServer
 
             app.UseMvc();
             app.UseDiscoveryClient();
+            app.UseHystrixMetricsStream();
+            app.UseHystrixRequestContext();
         }
     }
 }
