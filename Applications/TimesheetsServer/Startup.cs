@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Pivotal.Discovery.Client;
+using Steeltoe.Extensions.Configuration;
 using Timesheets;
 
 namespace TimesheetsServer
@@ -18,6 +20,7 @@ namespace TimesheetsServer
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddCloudFoundry()
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
         }
@@ -30,13 +33,15 @@ namespace TimesheetsServer
             // Add framework services.
             services.AddMvc();
 
+            services.AddDiscoveryClient(Configuration);
             services.AddSingleton<IDataSourceConfig, DataSourceConfig>();
             services.AddSingleton<IDatabaseTemplate, DatabaseTemplate>();
             services.AddSingleton<ITimeEntryDataGateway, TimeEntryDataGateway>();
             
             services.AddSingleton<IProjectClient>(sp =>
             {
-                var httpClient = new HttpClient
+                var handler = new DiscoveryHttpClientHandler(sp.GetService<IDiscoveryClient>());
+                var httpClient = new HttpClient(handler, false)
                 {
                     BaseAddress = new Uri(Configuration.GetValue<string>("REGISTRATION_SERVER_ENDPOINT"))
                 };

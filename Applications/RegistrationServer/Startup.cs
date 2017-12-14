@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Pivotal.Discovery.Client;
 using Projects;
+using Steeltoe.Extensions.Configuration;
 using Users;
 
 namespace RegistrationServer
@@ -18,6 +20,7 @@ namespace RegistrationServer
                 .SetBasePath(env.ContentRootPath)
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddCloudFoundry()
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
         }
@@ -30,6 +33,7 @@ namespace RegistrationServer
             // Add framework services.
             services.AddMvc();
 
+            services.AddDiscoveryClient(Configuration);
             services.AddSingleton<IDataSourceConfig, DataSourceConfig>();
             services.AddSingleton<IDatabaseTemplate, DatabaseTemplate>();
             services.AddSingleton<IAccountDataGateway, AccountDataGateway>();
@@ -45,6 +49,7 @@ namespace RegistrationServer
             loggerFactory.AddDebug();
 
             app.UseMvc();
+            app.UseDiscoveryClient();
         }
     }
 }
